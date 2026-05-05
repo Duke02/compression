@@ -1,10 +1,25 @@
-use std::{fs::OpenOptions, io::Read, path::PathBuf};
+use std::{fs::OpenOptions, io::Read, path::PathBuf, time::SystemTime};
 
-use crate::error::CompressionError;
+use crate::error::{CompressionError, CompressionResult};
 
 
+pub fn posix_time(dt: SystemTime) -> CompressionResult<u64> {
+    Ok(dt.duration_since(SystemTime::UNIX_EPOCH)?.as_secs())
+}
 
-pub fn read_file(fp: &PathBuf) -> Result<Vec<u8>, CompressionError> {
+pub fn create_bytes_buffer(base_data: &[u8], max_size: usize) -> Vec<u8> {
+    fn feed_into_buffer(i: usize, data: &[u8]) -> u8 {
+        if i < data.len() {
+            data[i]
+        } else {
+            0u8
+        }
+    }
+    (0..max_size).map(|i| feed_into_buffer(i, base_data)).collect()
+}
+
+
+pub fn read_file(fp: &PathBuf) -> CompressionResult<Vec<u8>> {
     let mut file = match OpenOptions::new().read(true).create(false).open(fp) {
         Ok(f) => Ok(f),
         Err(e) => match e.kind() {
